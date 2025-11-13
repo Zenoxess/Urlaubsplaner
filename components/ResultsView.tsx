@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom/client';
 import { CalendarView } from './CalendarView';
 import { ListView } from './ListView';
 import { MonthlyDistributionChart } from './MonthlyDistributionChart';
@@ -8,6 +10,10 @@ import { CalendarIcon } from './icons/CalendarIcon';
 import { EditSuggestionModal } from './EditSuggestionModal';
 import { CreateSuggestionModal } from './CreateSuggestionModal';
 import { NEXT_YEAR } from '../constants';
+import { DownloadIcon } from './icons/DownloadIcon';
+import { downloadCsv } from '../services/exportService';
+import { PrintableView } from './PrintableView';
+
 
 interface ResultsViewProps {
   plan: VacationPlan;
@@ -87,6 +93,9 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ plan, userInput, onRes
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [newVacationDates, setNewVacationDates] = useState<{ startDate: string; endDate: string } | null>(null);
 
+  const [isExportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportButtonRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     // Sanitize the plan from Gemini on load to enforce the carry-over rule client-side.
     // This corrects any inaccuracies from the AI and ensures consistency.
@@ -98,6 +107,18 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ plan, userInput, onRes
         ...recalculatedData
     });
   }, [plan, userInput]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (exportButtonRef.current && !exportButtonRef.current.contains(event.target as Node)) {
+            setExportMenuOpen(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const totalDays = userInput.vacationDaysNew + userInput.vacationDaysCarryOver;
   const totalUsedDays = editablePlan.suggestions.reduce((sum, s) => sum + s.vacationDaysUsed, 0);
@@ -196,6 +217,62 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ plan, userInput, onRes
     
     handleCloseModal();
   };
+
+  const handleCsvExport = () => {
+    downloadCsv(editablePlan, userInput);
+    setExportMenuOpen(false);
+  };
+
+  const handlePdfExport = () => {
+    setExportMenuOpen(false);
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert("Bitte erlauben Sie Pop-ups, um den Plan zu drucken.");
+        return;
+    }
+
+    const printContainer = document.createElement('div');
+    document.body.appendChild(printContainer);
+    
+    const root = ReactDOM.createRoot(printContainer);
+    root.render(<PrintableView plan={editablePlan} userInput={userInput} />);
+
+    setTimeout(() => {
+        const printContent = printContainer.innerHTML;
+        
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Urlaubsplan ${NEXT_YEAR} - Druckansicht</title>
+                    <script src="https://cdn.tailwindcss.com"></script>
+                    <style>
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; color-adjust: exact; }
+                            .page-break-before-auto { page-break-before: auto; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${printContent}
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+
+        printWindow.onload = () => {
+            setTimeout(() => {
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
+                root.unmount();
+                if (printContainer.parentNode) {
+                   printContainer.parentNode.removeChild(printContainer);
+                }
+            }, 500);
+        };
+    }, 100);
+  };
   
   const editingSuggestion = editingSuggestionIndex !== null ? editablePlan.suggestions[editingSuggestionIndex] : null;
 
@@ -206,12 +283,41 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ plan, userInput, onRes
           <h2 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-100">Ihr Urlaubsplan für {NEXT_YEAR}</h2>
           <p className="text-slate-500 dark:text-slate-400">Generiert für {userInput.state}</p>
         </div>
-        <button 
-          onClick={onReset}
-          className="px-4 py-2 text-sm bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
-        >
-          Neu planen
-        </button>
+        <div className="flex items-center gap-2">
+            <button 
+              onClick={onReset}
+              className="px-4 py-2 text-sm bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+            >
+              Neu planen
+            </button>
+            <div className="relative" ref={exportButtonRef}>
+                <button
+                    onClick={() => setExportMenuOpen(prev => !prev)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm bg-slate-600 dark:bg-slate-200 text-white dark:text-slate-800 font-semibold rounded-lg hover:bg-slate-700 dark:hover:bg-white transition-colors"
+                    aria-haspopup="true"
+                    aria-expanded={isExportMenuOpen}
+                >
+                    <DownloadIcon className="w-4 h-4" />
+                    Exportieren
+                </button>
+                {isExportMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-700 rounded-md shadow-lg z-20 border border-slate-200 dark:border-slate-600">
+                        <ul className="py-1" role="menu">
+                            <li>
+                                <button onClick={handleCsvExport} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600" role="menuitem">
+                                    Als CSV herunterladen
+                                </button>
+                            </li>
+                            <li>
+                                <button onClick={handlePdfExport} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600" role="menuitem">
+                                    Als PDF drucken
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </div>
       </div>
       
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
