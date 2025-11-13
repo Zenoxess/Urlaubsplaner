@@ -71,6 +71,10 @@ export const generateVacationPlan = async (input: UserInput): Promise<VacationPl
       'no-preference': 'Keine Präferenz'
   }[input.seasonPreference];
 
+  const carryOverPrompt = (input.vacationDaysCarryOver > 0 && input.vacationDaysCarryOverExpires)
+    ? `3.  **Wichtig:** Urlaubstage aus dem Übertrag (${input.vacationDaysCarryOver} Tage) müssen priorisiert und bis zum **${input.vacationDaysCarryOverExpires}** aufgebraucht werden, da sie an diesem Datum verfallen. Plane diese zuerst ein.`
+    : `3.  **Wichtig:** Urlaubstage aus dem Übertrag (${input.vacationDaysCarryOver} Tage) müssen priorisiert und idealerweise bis zum 31. März ${NEXT_YEAR} aufgebraucht werden. Plane diese zuerst ein.`;
+
   const prompt = `
     Erstelle einen optimierten Urlaubsplan für das Jahr ${NEXT_YEAR} für einen Nutzer in Deutschland.
 
@@ -88,8 +92,8 @@ export const generateVacationPlan = async (input: UserInput): Promise<VacationPl
     **Aufgabe:**
     1.  Analysiere die gesetzlichen und regionalen Feiertage sowie die Schulferien für ${input.state} im Jahr ${NEXT_YEAR}.
     2.  Erstelle Vorschläge für Urlaubszeiträume, die die freien Tage des Nutzers maximieren, indem "Brückentage" geschickt genutzt werden.
-    3.  **Wichtig:** Urlaubstage aus dem Übertrag (${input.vacationDaysCarryOver} Tage) müssen priorisiert und idealerweise bis zum 31. März ${NEXT_YEAR} aufgebraucht werden. Plane diese zuerst ein.
-    4.  Berücksichtige ALLE Präferenzen des Nutzers: Schulferien, Umfang, maximale Urlaubslänge am Stück und bevorzugte Jahreszeit.
+    ${carryOverPrompt}
+    4.  Berücksichtige ALLE anderen Präferenzen des Nutzers: Schulferien, Umfang, maximale Urlaubslänge am Stück und bevorzugte Jahreszeit.
     5.  Gib für jeden Vorschlag an, wie viele Tage vom Übertrag ('vacationDaysUsedFromCarryOver') und wie viele vom neuen Anspruch ('vacationDaysUsedFromNew') verwendet werden. Die Summe dieser beiden Werte muss 'vacationDaysUsed' ergeben.
     6.  Plane so viele Urlaubstage wie möglich sinnvoll ein, aber überschreite nicht das Gesamtbudget von ${totalVacationDays} Tagen und halte dich an den gewünschten Planungsumfang.
     7.  Der Wert für "remainingVacationDaysNew" und "remainingVacationDaysCarryOver" muss korrekt berechnet werden.

@@ -12,6 +12,7 @@ export const UserInputForm: React.FC<UserInputFormProps> = ({ onSubmit }) => {
   const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [vacationDaysNew, setVacationDaysNew] = useState<number>(30);
   const [vacationDaysCarryOver, setVacationDaysCarryOver] = useState<number>(0);
+  const [carryOverExpires, setCarryOverExpires] = useState<string>(`${NEXT_YEAR}-03-31`);
   const [blockedPeriods, setBlockedPeriods] = useState<{ start: string; end: string }[]>([]);
   
   const [holidayPreference, setHolidayPreference] = useState<'in-holidays' | 'outside-holidays' | 'no-preference'>('no-preference');
@@ -49,6 +50,7 @@ export const UserInputForm: React.FC<UserInputFormProps> = ({ onSubmit }) => {
       workDays,
       vacationDaysNew,
       vacationDaysCarryOver,
+      vacationDaysCarryOverExpires: vacationDaysCarryOver > 0 ? carryOverExpires : undefined,
       blockedPeriods: blockedPeriods.filter(p => p.start && p.end),
       holidayPreference,
       planningAmount: {
@@ -96,6 +98,12 @@ export const UserInputForm: React.FC<UserInputFormProps> = ({ onSubmit }) => {
                 <input type="number" id="vacationDaysCarryOver" value={vacationDaysCarryOver} onChange={e => setVacationDaysCarryOver(parseInt(e.target.value, 10))} className="w-full p-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm" min="0" />
               </div>
             </div>
+             {vacationDaysCarryOver > 0 && (
+                <div className="mt-4">
+                    <label htmlFor="carryOverExpires" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Übertrag verfällt am</label>
+                    <input type="date" id="carryOverExpires" value={carryOverExpires} onChange={e => setCarryOverExpires(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm" />
+                </div>
+            )}
              <div className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-lg text-center">
                 <p className="text-sm text-slate-600 dark:text-slate-400">Gesamt verfügbar:</p>
                 <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{vacationDaysNew + vacationDaysCarryOver}</p>

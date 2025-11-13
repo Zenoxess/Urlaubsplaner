@@ -3,6 +3,7 @@ export interface UserInput {
   workDays: number[];
   vacationDaysNew: number;
   vacationDaysCarryOver: number;
+  vacationDaysCarryOverExpires?: string;
   blockedPeriods: { start: string; end: string }[];
   holidayPreference: 'in-holidays' | 'outside-holidays' | 'no-preference';
   planningAmount: {
