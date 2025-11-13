@@ -1,0 +1,5 @@
+{
+  "name": "Urlaubsplaner Pro",
+  "description": "Eine intelligente App zur Urlaubsplanung für das kommende Jahr, die regionale Feiertage in Deutschland nutzt, um Urlaubstage zu maximieren. Nutzer können ihr Bundesland, Arbeitstage, Urlaubstage und Sperrzeiten angeben, um einen optimierten Urlaubsplan mit Kalender- und Listenansicht zu erhalten.",
+  "requestFramePermissions": []
+}
